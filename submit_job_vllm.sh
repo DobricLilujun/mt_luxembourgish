@@ -10,6 +10,7 @@
 
 
 # Activate the appropriate virtual environment (if needed)
+conda init
 conda activate /home/users/luli/.conda/envs/mt_lux_env
 
 # /home/users/luli/.conda/envs/mt_lux_env/bin/python /home/users/luli/project/mt_luxembourgish/localLLM_running_inference.py --model_name /mnt/lscratch/users/luli/model/Meta-Llama-3-8B-Instruct/ --if_loading_quantization True --current_load_in_4bit True --batch_size 2 --text_column subsentence --prefix translation_LLM_huggingface_pipeline_ --input_file /home/users/luli/project/mt_luxembourgish/NC_lux_subsentences_test.csv --is_new_file False --device auto

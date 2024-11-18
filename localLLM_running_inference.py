@@ -77,6 +77,22 @@ def initialize_pipeline(config):
     text_pipeline.generation_config = generation_config
     return text_pipeline
 
+import subprocess
+
+def get_available_gpus():
+    try:
+        result = subprocess.run(['nvidia-smi', '--query-gpu=index', '--format=csv,noheader'],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if result.returncode == 0:
+            gpus = result.stdout.strip().split('\n')
+            return [int(gpu) for gpu in gpus]
+        else:
+            print(f"Error: {result.stderr}")
+            return []
+    except FileNotFoundError:
+        print("nvidia-smi command not found. Ensure that NVIDIA drivers are installed.")
+        return []
+
 
 def translate_batch_LLM(config, df):
     translator = initialize_pipeline(config)
@@ -103,6 +119,9 @@ def translate_batch_LLM(config, df):
     print("Start From Index: ", start_idx)
     texts = df["prompts_inputs"].to_list()
     batch_size = config["batch_size"]
+    
+    available_gpus = get_available_gpus()
+    print(f"Available GPUs: {available_gpus}")
 
     for i in tqdm(range(start_idx, len(texts), batch_size), desc="Translating", unit="batch"):
         batch = texts[i:i + batch_size]

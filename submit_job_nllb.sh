@@ -10,7 +10,8 @@
 
 
 # Activate the appropriate virtual environment (if needed)
-conda activate mt_lux_env
+conda init
+conda activate /home/users/luli/.conda/envs/mt_lux_env
 
 # Run the Python script with the appropriate command-line arguments
 python /home/users/luli/project/mt_luxembourgish/nllb_running_inference.py \
@@ -22,7 +23,6 @@ python /home/users/luli/project/mt_luxembourgish/nllb_running_inference.py \
   --batch_size 300 \
   --text_column subsentence \
   --prefix translation_nllb_ \
-  --input_file /home/users/luli/project/mt_luxembourgish/NC_lux_subsentences.csv \
-  --is_new_file True
+  --input_file /home/users/luli/project/mt_luxembourgish/NC_lux_subsentences.csv
 
 # End of the script
