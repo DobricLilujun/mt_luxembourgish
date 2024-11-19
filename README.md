@@ -22,21 +22,20 @@
 
 ## Code Explanations  
 
-1. data: Contains all example datasets used in the experiments.
-2. models: Stores pre-trained model cards , fine-tuned versions, and checkpoints.
-3. scripts: Contains reusable Python scripts for preprocessing, training, evaluation, and translation tasks.
-    * bLocal_LLM_running_inference.py is used for running huggingface local pipeline and do the inference.
+1. *data:* Contains all example datasets used in the experiments.
+2. *models*: Stores pre-trained model cards , fine-tuned versions, and checkpoints.
+3. *scripts*: Contains reusable Python scripts for preprocessing, training, evaluation, and translation tasks.
+    * `bLocal_LLM_running_inference.py` is used for running huggingface local pipeline and do the inference.
 
-    * nllb_running_inference.py is used for running nllb local pipeline and do the infernece of translation.
+    * `nllb_running_inference.py` is used for running nllb local pipeline and do the infernece of translation.
 
-    * *.sh files are used for submitting jobs on HPC.
-4. notebook: 
-    * data_chekcing.ipynb is used for data checking the change it to csv
-    * data_procesing.ipynb is used for processing the data: split, filter and language checking.
-    * model_inference.ipynb is used for tesing the model itself.
+    * `*.sh` files are used for submitting jobs on HPC.
+4. *notebook*: 
+    * `data_chekcing.ipynb` is used for data checking the change it to csv
+    * `data_procesing.ipynb` is used for processing the data: split, filter and language checking.
+    * `model_inference.ipynb` is used for tesing the model itself.
 
-5. utils: Utility functions and modules for common tasks
+5. *utils*: Utility functions and modules for common tasks
 
-### Temp
 
 
