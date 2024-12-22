@@ -5,3 +5,4 @@ meta-llama/
 models/
 .vscode/
 logs/
+output_dir/
