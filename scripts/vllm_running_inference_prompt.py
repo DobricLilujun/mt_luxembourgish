@@ -25,13 +25,22 @@ def validate_config(config):
 def generate_text_with_vllm(config, prompt):
     """Generate text using the specified language model."""
     headers = {"Content-Type": "application/json"}
-    payload = {
-        "model": config["model_name"],
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt},
-        ],
-    }
+    if "gemma" in config["model_name"]:
+        payload = {
+            "model": config["model_name"],
+            "messages": [
+                ##{"role": "assistant", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+        }
+    else:
+        payload = {
+            "model": config["model_name"],
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+        }
     payload.update(config["options"])
     response = requests.post(config["server_url"], headers=headers, json=payload)
     if response.status_code == 200:
