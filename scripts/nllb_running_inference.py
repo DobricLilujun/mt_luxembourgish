@@ -111,11 +111,8 @@ def translate_batch(config: Dict[str, Union[str, int, bool]], df: pd.DataFrame) 
             updated_row = df.iloc[i + j].copy()
             updated_row["translated_text"] = translated_batch[j]["translation_text"]
             updated_dataframe = pd.DataFrame([updated_row])
-
-            mode = "w" if i == start_idx and j == 0 and start_idx == 0 else "a"
-            header = mode == "w"
-            updated_dataframe.to_csv(output_file, index=False, mode=mode, header=header)
-
+            updated_dataframe.to_json(output_file, lines=True, mode="a", index=False)
+            
     print(f"Translation completed. Results saved to {output_file}")
 
 def main() -> None:
