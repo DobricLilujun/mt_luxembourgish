@@ -8,6 +8,7 @@ import argparse
 import json
 
 
+
 def validate_config(config):
     """Validate the configuration dictionary."""
     required_keys = ["model_name", "server_url"]
