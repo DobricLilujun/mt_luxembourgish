@@ -39,7 +39,10 @@ def load_checkpoint(latest_file: Optional[str], df: pd.DataFrame, text_column: s
         - int: The starting index for translation (equal to the number of already translated rows in the previous file).
     """
     if latest_file:
-        translated_df = pd.read_csv(latest_file)
+        if latest_file.endswith(".jsonl"):
+            translated_df = pd.read_json(latest_file, lines=True)
+        else:
+            translated_df = pd.read_csv(latest_file)
         translated_texts = translated_df[text_column].tolist()
         start_idx = len(translated_texts)
     else:
@@ -89,7 +92,7 @@ def translate_batch(config: Dict[str, Union[str, int, bool]], df: pd.DataFrame) 
         output_file = latest_file
     else:
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = f"{prefix}_{current_time}.csv"
+        output_file = f"{prefix}_{current_time}.jsonl"
 
     # Check the starting index for translation
     texts = df[config["text_column"]].tolist()
@@ -111,10 +114,7 @@ def translate_batch(config: Dict[str, Union[str, int, bool]], df: pd.DataFrame) 
             updated_row = df.iloc[i + j].copy()
             updated_row["translated_text"] = translated_batch[j]["translation_text"]
             updated_dataframe = pd.DataFrame([updated_row])
-
-            mode = "w" if i == start_idx and j == 0 and start_idx == 0 else "a"
-            header = mode == "w"
-            updated_dataframe.to_csv(output_file, index=False, mode=mode, header=header)
+            updated_dataframe.to_json(output_file, lines=True, mode="a", index=False, orient="records")
 
     print(f"Translation completed. Results saved to {output_file}")
 
@@ -157,10 +157,16 @@ def main() -> None:
     }
 
     # Load the input dataset
-    dataset_df = pd.read_csv(args.input_file)
+    if args.input_file.endswith(".jsonl"):
+        dataset_df = pd.read_json(args.input_file, lines=True)
+    else:
+        dataset_df = pd.read_csv(args.input_file)
 
     # Run the translation process
     translate_batch(config, dataset_df)
 
 if __name__ == "__main__":
     main()
+
+
+# python nllb_running_inference.py --model_name "" --src_lang "lb" --tgt_lang "en" --device "cuda:0" --max_length 1024 --batch_size 6 --text_column "subsentence" --prefix "nllb_en" --input_file "data/processed/RTL2024_subsentences.jsonl"
