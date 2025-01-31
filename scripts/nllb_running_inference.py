@@ -157,10 +157,16 @@ def main() -> None:
     }
 
     # Load the input dataset
-    dataset_df = pd.read_csv(args.input_file)
+    if args.input_file.endswith(".jsonl"):
+        dataset_df = pd.read_json(args.input_file, lines=True)
+    else:
+        dataset_df = pd.read_csv(args.input_file)
 
     # Run the translation process
     translate_batch(config, dataset_df)
 
 if __name__ == "__main__":
     main()
+
+
+# python nllb_running_inference.py --model_name "" --src_lang "lb" --tgt_lang "en" --device "cuda:0" --max_length 1024 --batch_size 6 --text_column "subsentence" --prefix "nllb_en" --input_file "data/processed/RTL2024_subsentences.jsonl"
