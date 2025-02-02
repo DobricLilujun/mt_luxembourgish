@@ -12,8 +12,8 @@ from transformers import (
 import time
 import torch
 from datasets import Dataset
-from torch.utils.data import Dataset
 import sys
+from datasets import Dataset
 
 # ========================== CMD Argument Parser ==========================
 def parse_args():
