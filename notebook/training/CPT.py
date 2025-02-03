@@ -50,7 +50,7 @@ def parse_args():
     parser.add_argument("--training_dataset_path", type=str, default="data/processed/dataset_merged_llama_fake_targets.jsonl", help="Path to training dataset")
     parser.add_argument("--model_name", type=str, default="/home/llama/Personal_Directories/srb/binary_classfication/Llama-3.2-3B-Instruct", help="Path to model")
     parser.add_argument("--resume_from_checkpoint", type=bool, default=False, help="Resume training from checkpoint")
-    parser.add_argument("--resume_checkpoint_path", type=str, default=None,, help="Path to checkpoint to resume training from")
+    parser.add_argument("--resume_checkpoint_path", type=str, default=None, help="Path to checkpoint to resume training from")
     return parser.parse_args()
 
 args = parse_args()
@@ -74,7 +74,7 @@ model_name = args.model_name
 resume_from_checkpoint = args.resume_from_checkpoint
 resume_checkpoint_path = args.resume_checkpoint_path
 
-if resume_from_checkpoint is True and resume_checkpoint_path is None:
+if resume_from_checkpoint and resume_checkpoint_path is None:
     raise ValueError("Please provide a checkpoint path to resume training from")
 
 
@@ -88,7 +88,7 @@ save_strategy="epoch"
 eval_steps=500
 max_grad_norm = 0.3
 fp16 = True
-resume_from_checkpoint = False
+resume_from_checkpoint = resume_from_checkpoint
 
 # ========================== Main Training Code ==========================
 
@@ -288,6 +288,4 @@ if __name__ == "__main__":
 #     --learning_rate 1e-6 \
 #     --project_root "/Users/lujun.li/projects/mt_luxembourgish" \
 #     --training_dataset_path "data/processed/dataset_merged_llama_fake_targets.jsonl" \
-#     --model_name "/home/llama/Personal_Directories/srb/binary_classfication/Llama-3.2-3B-Instruct" \
-#     --resume_from_checkpoint False \
-#     --resume_checkpoint_path None
+#     --model_name "/home/llama/Personal_Directories/srb/binary_classfication/Llama-3.2-3B-Instruct"
