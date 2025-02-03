@@ -49,6 +49,8 @@ def parse_args():
     parser.add_argument("--project_root", type=str, default="/Users/lujun.li/projects/mt_luxembourgish", help="Path to project root")
     parser.add_argument("--training_dataset_path", type=str, default="data/processed/dataset_merged_llama_fake_targets.jsonl", help="Path to training dataset")
     parser.add_argument("--model_name", type=str, default="/home/llama/Personal_Directories/srb/binary_classfication/Llama-3.2-3B-Instruct", help="Path to model")
+    parser.add_argument("--resume_from_checkpoint", type=bool, default=False, help="Resume training from checkpoint")
+    parser.add_argument("--resume_checkpoint_path", type=str, default=None,, help="Path to checkpoint to resume training from")
     return parser.parse_args()
 
 args = parse_args()
@@ -69,6 +71,12 @@ num_train_epochs = args.num_train_epochs  # Number of epochs for training
 training_dataset_path = args.training_dataset_path
 project_root = args.project_root
 model_name = args.model_name
+resume_from_checkpoint = args.resume_from_checkpoint
+resume_checkpoint_path = args.resume_checkpoint_path
+
+if resume_from_checkpoint is True and resume_checkpoint_path is None:
+    raise ValueError("Please provide a checkpoint path to resume training from")
+
 
 train_ratio = 0.001  # Number of samples to be used for training and evaluation
 weight_decay = 0.01  # Weight decay rate for regularization
@@ -217,7 +225,11 @@ def train_ddp_accelerate():
     model = AutoModelForCausalLM.from_pretrained(model_name)
     model.config.use_cache = False
     current = time.time()
-    output_dir = f"logs/fit_{current}_{train_ratio}"
+    if resume_from_checkpoint:
+        output_dir = resume_checkpoint_path
+    else:
+        output_dir = f"logs/fit_{current}_{train_ratio}"
+
     print(print_trainable_parameters(model))
     
     training_args = TrainingArguments(
@@ -270,10 +282,12 @@ if __name__ == "__main__":
 # python notebook/training/CPT.py --per_device_train_batch_size 10 --per_device_eval_batch_size 10 --num_train_epochs 5 --learning_rate 1e-6 --training_dataset_path data/processed/dataset_merged_llama_fake_targets.jsonl
 
 # python notebook/training/CPT.py \
-#     --per_device_train_batch_size 16 \
-#     --per_device_eval_batch_size 16 \
-#     --num_train_epochs 10 \
+#     --per_device_train_batch_size 1 \
+#     --per_device_eval_batch_size 1 \
+#     --num_train_epochs 5 \
 #     --learning_rate 1e-6 \
 #     --project_root "/Users/lujun.li/projects/mt_luxembourgish" \
 #     --training_dataset_path "data/processed/dataset_merged_llama_fake_targets.jsonl" \
-#     --model_name "/home/llama/Personal_Directories/srb/binary_classfication/Llama-3.2-3B-Instruct"
+#     --model_name "/home/llama/Personal_Directories/srb/binary_classfication/Llama-3.2-3B-Instruct" \
+#     --resume_from_checkpoint False \
+#     --resume_checkpoint_path None
