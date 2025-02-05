@@ -97,29 +97,24 @@ train_dataset_path = os.path.abspath(os.path.join(project_root, training_dataset
 sys.path.append(project_root)
 
 if train_dataset_path.endswith(".jsonl"):
-    train_dataset = Dataset.from_json(train_dataset_path) 
+    dataset = Dataset.from_json(train_dataset_path) 
 else:
-    train_dataset = load_from_disk(train_dataset_path) 
+    dataset = load_from_disk(train_dataset_path) 
 
-sample_number = int(len(train_dataset) * train_ratio)
 
-train_dataset = train_dataset.select(range(sample_number)) 
+sample_number = int(len(dataset) * train_ratio)
+
+train_dataset = dataset[dataset["split"]=="train"].select(range(sample_number)) 
 train_dataset = train_dataset.rename_columns({
     "input": "Luxembourgish",
     "translated_text": "English",
 })
 
-
-val_dataset = (
-    load_from_disk(val_dataset_path)
-    .rename_columns(
-        {
-            "sentence_ltz_Latn": "Luxembourgish",
-            "sentence_eng_Latn": "English",
-        }
-    )
-    .select([i for i in range(100)])
-)
+val_dataset = dataset[dataset["split"]=="val"].select(range(sample_number))
+val_dataset = val_dataset.rename_columns({
+    "input": "Luxembourgish",
+    "translated_text": "English",
+})
 
 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
