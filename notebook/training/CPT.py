@@ -78,7 +78,7 @@ if resume_from_checkpoint and resume_checkpoint_path is None:
     raise ValueError("Please provide a checkpoint path to resume training from")
 
 
-train_ratio = 0.001  # Number of samples to be used for training and evaluation
+train_ratio = 0.01  # Number of samples to be used for training and evaluation
 weight_decay = 0.01  # Weight decay rate for regularization
 MAX_LEN = 512  # Maximum sequence length for model inputs
 warmup_ratio = 0.5
@@ -279,8 +279,8 @@ if __name__ == "__main__":
 # python notebook/training/CPT.py \
 #     --per_device_train_batch_size 1 \
 #     --per_device_eval_batch_size 1 \
-#     --num_train_epochs 5 \
+#     --num_train_epochs 3 \
 #     --learning_rate 1e-6 \
-#     --project_root "/Users/lujun.li/projects/mt_luxembourgish" \
-#     --training_dataset_path "data/processed/dataset_merged_llama_fake_targets.jsonl" \
-#     --model_name "/home/llama/Personal_Directories/srb/binary_classfication/Llama-3.2-3B-Instruct"
+#     --project_root "/home/snt/projects_lujun/mt_luxembourgish" \
+#     --training_dataset_path "data/processed/dataset_merged_llama_fake_targets_with_split.jsonl" \
+#     --model_name "/home/snt/projects_lujun/base_models/Llama-3.2-3B-Instruct"
