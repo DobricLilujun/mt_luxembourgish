@@ -78,7 +78,7 @@ if resume_from_checkpoint and resume_checkpoint_path is None:
     raise ValueError("Please provide a checkpoint path to resume training from")
 
 
-train_ratio = 0.01  # Number of samples to be used for training and evaluation
+train_ratio = 1.0  # Number of samples to be used for training and evaluation
 weight_decay = 0.01  # Weight decay rate for regularization
 MAX_LEN = 512  # Maximum sequence length for model inputs
 warmup_ratio = 0.5
@@ -96,21 +96,27 @@ val_dataset_path = os.path.abspath(os.path.join(project_root, "data/fake_targets
 train_dataset_path = os.path.abspath(os.path.join(project_root, training_dataset_path))
 sys.path.append(project_root)
 
+# Load dataset
 if train_dataset_path.endswith(".jsonl"):
-    dataset = Dataset.from_json(train_dataset_path) 
+    dataset = Dataset.from_json(train_dataset_path)  # Ensure correct format
 else:
-    dataset = load_from_disk(train_dataset_path) 
+    dataset = load_from_disk(train_dataset_path)
+
+# Filter by split
+train_dataset = dataset.filter(lambda x: x["split"] == "train")
+val_dataset = dataset.filter(lambda x: x["split"] == "val")
 
 
-sample_number = int(len(dataset) * train_ratio)
+# Select subset
+train_dataset = train_dataset.select(range(int(len(train_dataset) * train_ratio)))
+val_dataset = val_dataset.select(range(int(len(val_dataset) * train_ratio)))  # Avoid out-of-range error
 
-train_dataset = dataset[dataset["split"]=="train"].select(range(sample_number)) 
+# Rename columns
 train_dataset = train_dataset.rename_columns({
     "input": "Luxembourgish",
     "translated_text": "English",
 })
 
-val_dataset = dataset[dataset["split"]=="val"].select(range(sample_number))
 val_dataset = val_dataset.rename_columns({
     "input": "Luxembourgish",
     "translated_text": "English",
@@ -193,7 +199,7 @@ def tokenize_function(examples):
         examples["prompt_response"],
         truncation=True,
         padding="max_length",
-        max_length=512,
+        max_length=MAX_LEN,
         return_tensors="pt",
     )
 
@@ -275,6 +281,19 @@ if __name__ == "__main__":
     main()
 
 # python notebook/training/CPT.py --per_device_train_batch_size 10 --per_device_eval_batch_size 10 --num_train_epochs 5 --learning_rate 1e-6 --training_dataset_path data/processed/dataset_merged_llama_fake_targets.jsonl
+
+# python notebook/training/CPT.py \
+#     --per_device_train_batch_size 1 \
+#     --per_device_eval_batch_size 1 \
+#     --num_train_epochs 3 \
+#     --learning_rate 1e-6 \
+#     --project_root "/home/snt/projects_lujun/mt_luxembourgish" \
+#     --training_dataset_path "data/processed/dataset_merged_llama_fake_targets_with_split.jsonl" \
+#     --model_name "/home/snt/projects_lujun/base_models/Llama-3.2-1B-Instruct" \
+#     --resume_from_checkpoint True\
+#     --resume_checkpoint_path "/home/snt/projects_lujun/mt_luxembourgish/logs/fit_1738867685.359803_0.001"
+
+
 
 # python notebook/training/CPT.py \
 #     --per_device_train_batch_size 1 \
