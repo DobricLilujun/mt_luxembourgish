@@ -229,7 +229,8 @@ def train_ddp_accelerate():
     if resume_from_checkpoint:
         output_dir = resume_checkpoint_path
     else:
-        output_dir = f"logs/fit_{current}_{train_ratio}"
+        input_file_name = training_dataset_path.split("/")[-1].split(".")[0]
+        output_dir = f"logs/fit_{current}_{train_ratio}_{input_file_name}"
 
     print(print_trainable_parameters(model))
     
