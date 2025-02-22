@@ -83,10 +83,8 @@ weight_decay = 0.01  # Weight decay rate for regularization
 MAX_LEN = 512  # Maximum sequence length for model inputs
 warmup_ratio = 0.5
 logging_steps = 300
-evaluation_strategy="steps"
-save_steps = 3000
-save_strategy="steps"
-eval_steps=300
+evaluation_strategy="epoch"
+save_strategy="epoch"
 max_grad_norm = 0.3
 fp16 = True
 resume_from_checkpoint = resume_from_checkpoint
@@ -129,7 +127,7 @@ tokenizer.pad_token = tokenizer.eos_token
 
 
 def create_prompt(
-    sample, mode="train", src_lng="English", tgt_lnsg="Luxembourgish", tokenizer=None
+    sample, mode="train", src_lng="English", tgt_lng="Luxembourgish", tokenizer=None
 ):
     """
     Create a prompt using the model's EOS token.
@@ -243,7 +241,6 @@ def train_ddp_accelerate():
         warmup_ratio=warmup_ratio,
         evaluation_strategy=evaluation_strategy,
         save_strategy=save_strategy,
-        save_steps=save_steps,
         # eval_steps=eval_steps,
         logging_steps=logging_steps,
         learning_rate=learning_rate,
