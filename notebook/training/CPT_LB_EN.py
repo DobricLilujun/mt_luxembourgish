@@ -281,26 +281,13 @@ def main():
 if __name__ == "__main__":
     main()
 
-# python notebook/training/CPT.py --per_device_train_batch_size 10 --per_device_eval_batch_size 10 --num_train_epochs 5 --learning_rate 1e-6 --training_dataset_path data/processed/dataset_merged_llama_fake_targets.jsonl
-
-# python notebook/training/CPT.py \
-#     --per_device_train_batch_size 1 \
-#     --per_device_eval_batch_size 1 \
-#     --num_train_epochs 3 \
-#     --learning_rate 1e-6 \
-#     --project_root "/home/snt/projects_lujun/mt_luxembourgish" \
-#     --training_dataset_path "data/processed/dataset_merged_llama_fake_targets_with_split.jsonl" \
-#     --model_name "/home/snt/projects_lujun/base_models/Llama-3.2-1B-Instruct" \
-#     --resume_from_checkpoint True\
-#     --resume_checkpoint_path "/home/snt/projects_lujun/mt_luxembourgish/logs/fit_1738867685.359803_0.001"
-
-
-
-# python notebook/training/CPT.py \
-#     --per_device_train_batch_size 1 \
-#     --per_device_eval_batch_size 1 \
-#     --num_train_epochs 3 \
-#     --learning_rate 1e-6 \
-#     --project_root "/home/snt/projects_lujun/mt_luxembourgish" \
-#     --training_dataset_path "data/processed/dataset_merged_llama_fake_targets_with_split.jsonl" \
-#     --model_name "/home/snt/projects_lujun/base_models/Llama-3.2-3B-Instruct"
+# CUDA_VISIBLE_DEVICES=0 python notebook/training/CPT_LB_EN.py \
+    # --per_device_train_batch_size 8 \
+    # --per_device_eval_batch_size 8 \
+    # --num_train_epochs 1 \
+    # --learning_rate 1e-6 \
+    # --project_root "/home/llama/Personal_Directories/srb/mt_luxembourgish" \
+    # --training_dataset_path "data/training_dataset/dataset_nllb_llama_GPT_DictCheck_split.jsonl" \
+    # --model_name "/home/llama/models/base_models/Llama-3.2-3B-Instruct" \
+    # --resume_from_checkpoint True\
+    # --resume_checkpoint_path "/home/snt/projects_lujun/mt_luxembourgish/logs/fit_1738867685.359803_0.001"
