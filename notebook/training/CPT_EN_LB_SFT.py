@@ -73,21 +73,49 @@ project_root = args.project_root
 model_name = args.model_name
 resume_from_checkpoint = args.resume_from_checkpoint
 resume_checkpoint_path = args.resume_checkpoint_path
+device="cuda:0"
+
+# learning_rate = 1e-6 # Learning rate for the optimizer
+# per_device_train_batch_size = 1  # Batch size for training per device
+# per_device_eval_batch_size = 1  # Batch size for evaluation per device
+# num_train_epochs = 1  # Number of epochs for training
+# training_dataset_path = "data/training_dataset/dataset_GPT_split.jsonl"
+# project_root = "/home/snt/projects_lujun/mt_luxembourgish"
+# model_name = "/home/snt/llm_models/Llama-3.2-1B-Instruct"
+# resume_from_checkpoint = False
+# resume_checkpoint_path = None
+
 
 if resume_from_checkpoint and resume_checkpoint_path is None:
     raise ValueError("Please provide a checkpoint path to resume training from")
 
 
-train_ratio = 1.0  # Number of samples to be used for training and evaluation
+train_ratio = 0.001  # Number of samples to be used for training and evaluation
+learning_rate = 1e-6  # Learning rate for the optimizer
+per_device_train_batch_size = 1  # Batch size for training per device
+per_device_eval_batch_size = 1  # Batch size for evaluation per device
+num_train_epochs = 1  # Number of epochs for training
 weight_decay = 0.01  # Weight decay rate for regularization
 MAX_LEN = 512  # Maximum sequence length for model inputs
 warmup_ratio = 0.5
-logging_steps = 300
+
+logging_steps = 100
 evaluation_strategy="epoch"
 save_strategy="epoch"
+eval_steps=500
+
 max_grad_norm = 0.3
 fp16 = True
-resume_from_checkpoint = resume_from_checkpoint
+resume_from_checkpoint = False
+
+project_root = "/home/snt/projects_lujun/mt_luxembourgish"
+model_name = (
+    # "/home/llama/Personal_Directories/srb/binary_classfication/Llama-3.2-3B-Instruct"
+    "/home/snt/llm_models/Llama-3.2-1B-Instruct"
+)
+val_dataset_path = os.path.abspath(os.path.join(project_root, "data/fake_targets/flores_devtest_arrow"))
+train_dataset_path = os.path.abspath(os.path.join(project_root, "data/training_dataset/dataset_GPT_split.jsonl"))
+sys.path.append(project_root)
 
 # ========================== Main Training Code ==========================
 
@@ -146,12 +174,12 @@ def create_prompt(
 
         "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n" + system_message + "<|eot_id|>" +  # System Message
 
-        "<|start_header_id|>user<|end_header_id|>\n\n" + f"Translate the {src_lng} input text into {tgt_lng}.\n{input_text}. Do not include any additional information or unrelated content."  +  "<|eot_id|><|start_header_id|>assistant<|end_header_id|>" # User Query
+        "<|start_header_id|>user<|end_header_id|>\n\n" + f"Translate the English input text into Luxembourgish.\n{input_text}. Do not include any additional information or unrelated content."  +  "<|eot_id|><|start_header_id|>assistant<|end_header_id|>" # User Query
     )
 
     full_input_prompt = full_prompt
-    full_input_CPT_prompt = full_input_prompt + response + eos_token
-    labels = response
+    full_input_CPT_prompt = full_input_prompt + response + "<|eot_id|>"
+    labels = response + "<|eot_id|>"  # <|eot_id|> is end of generation
     if mode == "train":
         full_prompt += response + eos_token
 
@@ -170,17 +198,21 @@ val_dataset_CPT = val_dataset.map(
 ).select_columns(["full_input_CPT_prompt"])
 
 
-train_dataset_SFT = train_dataset.map(
-    lambda sample: {
-        "inputs+outputs": create_prompt(sample, mode="train", tokenizer=tokenizer)
-    }
-)
+# train_dataset_SFT = train_dataset.map(
+#     lambda sample: {
+#         **create_prompt(sample, mode="train", tokenizer=tokenizer),
+#         "inputs": create_prompt(sample, mode="train", tokenizer=tokenizer)["full_input_prompt"],
+#         "outputs": create_prompt(sample, mode="train", tokenizer=tokenizer)["labels"]
+#     }
+# )
 
-val_dataset_SFT = val_dataset.map(
-    lambda sample: {
-        "inputs+outputs": create_prompt(sample, mode="train", tokenizer=tokenizer)
-    }
-)
+# val_dataset_SFT = val_dataset.map(
+#     lambda sample: {
+#         **create_prompt(sample, mode="train", tokenizer=tokenizer),
+#         "inputs": create_prompt(sample, mode="train", tokenizer=tokenizer)["full_input_prompt"],
+#         "outputs": create_prompt(sample, mode="train", tokenizer=tokenizer)["labels"]
+#     }
+# )
 
 # dataset_CPT = DatasetDict({"train": train_dataset_CPT, "val": val_dataset_CPT})
 # dataset_SFT = DatasetDict({"train": train_dataset_SFT, "val": val_dataset_SFT})
@@ -191,23 +223,23 @@ data_collator = DataCollatorForLanguageModeling(
 
 def tokenize_function_CPT(examples):
     return tokenizer(
-        examples["prompt_response"],
+        examples["full_input_CPT_prompt"],
         truncation=True,
         padding="max_length",
         max_length=MAX_LEN,
         return_tensors="pt",
     )
 
-def tokenize_function_SFT(examples):
-    tokenized_example = tokenizer(
-        examples["inputs+outputs"]["full_input_prompt"],
-        truncation=True,
-        padding="max_length",
-        max_length=MAX_LEN,
-        return_tensors="pt",
-    )
-    tokenized_example["labels"] = tokenizer(examples["inputs+outputs"]["labels"], truncation=True, padding="max_length", max_length=MAX_LEN, return_tensors="pt")["input_ids"]
-    return tokenized_example
+# def tokenize_function_SFT(examples):
+#     tokenized_example = tokenizer(
+#         examples["inputs"],
+#         truncation=True,
+#         padding="max_length",
+#         max_length=MAX_LEN,
+#         return_tensors="pt",
+#     )
+#     tokenized_example["labels"] = tokenizer(examples["labels"], truncation=True, padding="max_length", max_length=MAX_LEN, return_tensors="pt")["input_ids"]
+#     return tokenized_example
 
 
 tokenized_train_dataset_CPT = train_dataset_CPT.map(
@@ -217,14 +249,16 @@ tokenized_val_dataset_CPT = val_dataset_CPT.map(
     tokenize_function_CPT, batched=True, remove_columns=["full_input_CPT_prompt"]
 )
 
-tokenized_train_dataset_SFT = train_dataset_SFT.map(
-    tokenize_function_SFT, batched=True, remove_columns=["inputs+outputs"]
-)   
+# tokenized_train_dataset_SFT = train_dataset_SFT.map(
+#     tokenize_function_SFT, batched=True, remove_columns=["inputs","outputs"]
+# )   
 
-tokenized_val_dataset_SFT = val_dataset_SFT.map(
-    tokenize_function_SFT, batched=True, remove_columns=["inputs+outputs"] 
-)
+# tokenized_val_dataset_SFT = val_dataset_SFT.map(
+#     tokenize_function_SFT, batched=True, remove_columns=["inputs","outputs"]
+# )
 
+
+# ====================================================TRAINING=================================================================
 # ====================================================TRAINING=================================================================
 def print_trainable_parameters(model):
     """Prints the number of trainable parameters in the model."""
@@ -284,53 +318,53 @@ def train_ddp_accelerate_cpt():
     trainer.train(resume_from_checkpoint=resume_from_checkpoint)
     print("Finished training CPT.")
 
-def train_ddp_accelerate_sft():
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    model.config.use_cache = False
-    current = time.time()
-    if resume_from_checkpoint:
-        output_dir = resume_checkpoint_path
-    else:
-        input_file_name = training_dataset_path.split("/")[-1].split(".")[0]
-        output_dir = f"logs/fit_{current}_{train_ratio}_{input_file_name}"
+# def train_ddp_accelerate_sft():
+#     model = AutoModelForCausalLM.from_pretrained(model_name)
+#     model.config.use_cache = False
+#     current = time.time()
+#     if resume_from_checkpoint:
+#         output_dir = resume_checkpoint_path
+#     else:
+#         input_file_name = training_dataset_path.split("/")[-1].split(".")[0]
+#         output_dir = f"logs/fit_{current}_{train_ratio}_{input_file_name}"
 
-    print(print_trainable_parameters(model))
+#     print(print_trainable_parameters(model))
     
-    training_args = TrainingArguments(
-        output_dir=output_dir,
-        num_train_epochs=num_train_epochs,
-        per_device_train_batch_size=per_device_train_batch_size,
-        per_device_eval_batch_size=per_device_eval_batch_size,
-        warmup_ratio=warmup_ratio,
-        evaluation_strategy=evaluation_strategy,
-        save_strategy=save_strategy,
-        # eval_steps=eval_steps,
-        logging_steps=logging_steps,
-        learning_rate=learning_rate,
-        weight_decay=weight_decay,
-        fp16=fp16,
-        max_grad_norm=max_grad_norm,
-        group_by_length=True,
-        lr_scheduler_type="cosine",
-        report_to="tensorboard",
-        ddp_find_unused_parameters=False,
-        remove_unused_columns=False,
-        disable_tqdm=False,
-        load_best_model_at_end=True,
-    )
+#     training_args = TrainingArguments(
+#         output_dir=output_dir,
+#         num_train_epochs=num_train_epochs,
+#         per_device_train_batch_size=per_device_train_batch_size,
+#         per_device_eval_batch_size=per_device_eval_batch_size,
+#         warmup_ratio=warmup_ratio,
+#         evaluation_strategy=evaluation_strategy,
+#         save_strategy=save_strategy,
+#         # eval_steps=eval_steps,
+#         logging_steps=logging_steps,
+#         learning_rate=learning_rate,
+#         weight_decay=weight_decay,
+#         fp16=fp16,
+#         max_grad_norm=max_grad_norm,
+#         group_by_length=True,
+#         lr_scheduler_type="cosine",
+#         report_to="tensorboard",
+#         ddp_find_unused_parameters=False,
+#         remove_unused_columns=False,
+#         disable_tqdm=False,
+#         load_best_model_at_end=True,
+#     )
 
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=tokenized_train_dataset_SFT,
-        eval_dataset=tokenized_val_dataset_SFT,
-        tokenizer=tokenizer,
-        data_collator=data_collator,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
-    )
+#     trainer = Trainer(
+#         model=model,
+#         args=training_args,
+#         train_dataset=tokenized_train_dataset_SFT,
+#         eval_dataset=tokenized_val_dataset_SFT,
+#         tokenizer=tokenizer,
+#         data_collator=data_collator,
+#         callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
+#     )
 
-    trainer.train(resume_from_checkpoint=resume_from_checkpoint)
-    print("Finished training CPT.")
+#     trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+#     print("Finished training CPT.")
     
 
 from accelerate import Accelerator
@@ -343,13 +377,13 @@ def main():
 if __name__ == "__main__":
     main()
 
-# CUDA_VISIBLE_DEVICES=0 python notebook/training/CPT_EN_LB.py \
+# CUDA_VISIBLE_DEVICES=0 python notebook/training/CPT_EN_LB_SFT.py \
     # --per_device_train_batch_size 8 \
     # --per_device_eval_batch_size 8 \
     # --num_train_epochs 1 \
     # --learning_rate 1e-6 \
     # --project_root "/home/llama/Personal_Directories/srb/mt_luxembourgish" \
-    # --training_dataset_path "data/training_dataset/dataset_nllb_llama_GPT_DictCheck_split.jsonl" \
+    # --training_dataset_path "data/training_dataset/dataset_llama_split.jsonl" \
     # --model_name "/home/llama/models/base_models/Llama-3.2-3B-Instruct" \
     # --resume_from_checkpoint True\
     # --resume_checkpoint_path "/home/snt/projects_lujun/mt_luxembourgish/logs/fit_1738867685.359803_0.001"
