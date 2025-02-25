@@ -75,35 +75,18 @@ resume_from_checkpoint = args.resume_from_checkpoint
 resume_checkpoint_path = args.resume_checkpoint_path
 device="cuda:0"
 
-# learning_rate = 1e-6 # Learning rate for the optimizer
-# per_device_train_batch_size = 1  # Batch size for training per device
-# per_device_eval_batch_size = 1  # Batch size for evaluation per device
-# num_train_epochs = 1  # Number of epochs for training
-# training_dataset_path = "data/training_dataset/dataset_GPT_split.jsonl"
-# project_root = "/home/snt/projects_lujun/mt_luxembourgish"
-# model_name = "/home/snt/llm_models/Llama-3.2-1B-Instruct"
-# resume_from_checkpoint = False
-# resume_checkpoint_path = None
-
-
 if resume_from_checkpoint and resume_checkpoint_path is None:
     raise ValueError("Please provide a checkpoint path to resume training from")
 
 
-train_ratio = 0.001  # Number of samples to be used for training and evaluation
-learning_rate = 1e-6  # Learning rate for the optimizer
-per_device_train_batch_size = 1  # Batch size for training per device
-per_device_eval_batch_size = 1  # Batch size for evaluation per device
-num_train_epochs = 1  # Number of epochs for training
+train_ratio = 1.0 # Number of samples to be used for training and evaluation
 weight_decay = 0.01  # Weight decay rate for regularization
 MAX_LEN = 512  # Maximum sequence length for model inputs
 warmup_ratio = 0.5
 
-logging_steps = 100
+logging_steps = 1000
 evaluation_strategy="epoch"
 save_strategy="epoch"
-eval_steps=500
-
 max_grad_norm = 0.3
 fp16 = True
 resume_from_checkpoint = False
