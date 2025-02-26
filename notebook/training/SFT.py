@@ -88,12 +88,12 @@ tgt_lng = args.tgt_lng
 # resume_from_checkpoint = False
 # resume_checkpoint_path = None
 
-train_ratio = 0.001  # Number of samples to be used for training and evaluation
+train_ratio = 1.0  # Number of samples to be used for training and evaluation
 warmup_ratio = 0.5
-logging_steps = 100
-evaluation_strategy="epoch"
+logging_steps = 1000
+evaluation_strategy="steps"
 save_strategy="epoch"
-eval_steps=500
+eval_steps=1000
 max_grad_norm = 0.3
 fp16 = True
 MAX_LEN = 512
@@ -221,7 +221,7 @@ def train_ddp_accelerate_sft():
     accelerator = Accelerator()
     model = AutoModelForCausalLM.from_pretrained(model_name)
     model.config.use_cache = False
-    model = accelerator.prepare(model)
+    # model = accelerator.prepare(model)
     current = time.time()
     formatted_time = time.strftime("%m_%d_%H_%M", time.localtime(current))
     if resume_from_checkpoint:
@@ -241,6 +241,7 @@ def train_ddp_accelerate_sft():
         evaluation_strategy=evaluation_strategy,
         save_strategy=save_strategy,
         logging_steps=logging_steps,
+        eval_steps=eval_steps,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
         fp16=fp16,
@@ -251,7 +252,7 @@ def train_ddp_accelerate_sft():
         ddp_find_unused_parameters=False,
         remove_unused_columns=False,
         disable_tqdm=False,
-        load_best_model_at_end=True,
+        # load_best_model_at_end=True,
     )
 
     trainer = SFTTrainer(
@@ -261,7 +262,7 @@ def train_ddp_accelerate_sft():
         eval_dataset=tokenized_val_dataset,
         tokenizer=tokenizer,
         data_collator=data_collator,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
+        # callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
     )
 
     trainer.train(resume_from_checkpoint=resume_from_checkpoint)
