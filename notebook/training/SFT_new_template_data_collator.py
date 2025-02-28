@@ -178,19 +178,6 @@ val_dataset = val_dataset.map(
 ).select_columns(["full_prompt"])
 
 
-
-train_dataset = train_dataset.map(
-    lambda sample: {
-        "full_prompt": create_prompt(sample, src_lng=src_lng, tgt_lng=tgt_lng, mode="train", tokenizer=tokenizer)["full_prompt"]
-    }
-).select_columns(["full_prompt"])
-
-val_dataset = val_dataset.map(
-    lambda sample: {
-        "full_prompt": create_prompt(sample, src_lng=src_lng, tgt_lng=tgt_lng, mode="train", tokenizer=tokenizer)["full_prompt"]
-    }
-).select_columns(["full_prompt"])
-
 print("Example Prompt:    "+"*"*50)
 print (train_dataset["full_prompt"][0])
 print("Example Prompt:    "+"*"*50)
