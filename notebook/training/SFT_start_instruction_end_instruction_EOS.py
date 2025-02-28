@@ -228,7 +228,7 @@ def train_ddp_accelerate_sft():
         output_dir = resume_checkpoint_path
     else:
         input_file_name = training_dataset_path.split("/")[-1].split(".")[0]
-        output_dir = f"logs/{src_lng[:2]}_{tgt_lng[:2]}/fit_{formatted_time}_{train_ratio}_{input_file_name}"
+        output_dir = f"logs/SIEIE_{src_lng[:2]}_{tgt_lng[:2]}/fit_{formatted_time}_{train_ratio}_{input_file_name}"
 
     print(print_trainable_parameters(model))
     
