@@ -6,3 +6,4 @@ models/
 .vscode/
 logs/
 output_dir/
+unsloth_compiled_cache/
