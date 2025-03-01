@@ -54,7 +54,7 @@ def parse_args():
     parser.add_argument("--r", type=int, default=256, help="Number of random samples to be used for training")
     parser.add_argument("--is_peft", type=bool, default=False, help="Use PEFT")
     parser.add_argument("--is_unsloth", type=bool, default=False, help="Use UnSloth")
-    parser.add_argument("--is_train_response_only", type=bool, default=True, help="Train response only")
+    parser.add_argument("--is_train_response_only", type=bool, default=False, help="Train response only")
     return parser.parse_args()
 
 args = parse_args()
@@ -113,10 +113,10 @@ is_train_response_only = args.is_train_response_only
 model_name = model_path.split("/")[-1]
 train_ratio = 0.005  # Number of samples to be used for training and evaluation
 warmup_ratio = 0.5
-logging_steps = 10
+logging_steps = 1000
 evaluation_strategy="steps"
 save_strategy="epoch"
-eval_steps=10
+eval_steps=1000
 max_grad_norm = 0.3
 fp16 = not is_bfloat16_supported()
 MAX_LEN = 512
@@ -358,19 +358,65 @@ print(f"Peak reserved memory % of max memory = {used_percentage} %.")
 print(f"Peak reserved memory for training % of max memory = {lora_percentage} %.")
 
 
-# CUDA_VISIBLE_DEVICES=0 python notebook/training/SFT.py \
-    # --per_device_train_batch_size 8 \
-    # --per_device_eval_batch_size 8 \
-    # --src_lng "English" \
-    # --tgt_lng "Luxembourgish" \
-    # --num_train_epochs 1 \
-    # --learning_rate 1e-6 \
-    # --project_root "/home/llama/Personal_Directories/srb/mt_luxembourgish" \
-    # --training_dataset_path "data/training_dataset/dataset_llama_split.jsonl" \
-    # --model_name "/home/llama/models/base_models/Llama-3.2-3B-Instruct" \
-    # --resume_from_checkpoint True\
-    # --resume_checkpoint_path "/home/snt/projects_lujun/mt_luxembourgish/logs/fit_1738867685.359803_0.001"
-    # --r 256 \
-    # --is_peft False \
-    # --is_unsloth False \
-    # --is_train_response_only True
+# CUDA_VISIBLE_DEVICES=0 python SFT.py \
+#     --per_device_train_batch_size 8 \
+#     --per_device_eval_batch_size 8 \
+#     --src_lng "English" \
+#     --tgt_lng "Luxembourgish" \
+#     --num_train_epochs 1 \
+#     --learning_rate 1e-6 \
+#     --project_root "/home/llama/Personal_Directories/srb/mt_luxembourgish" \
+#     --training_dataset_path "data/training_dataset/dataset_llama_split.jsonl" \
+#     --model_path "/home/snt/projects_lujun/base_models/Llama-3.2-1B-Instruct" \
+#     --is_train_response_only "True"
+
+
+
+# CUDA_VISIBLE_DEVICES=0 python SFT.py \
+#     --per_device_train_batch_size 8 \
+#     --per_device_eval_batch_size 8 \
+#     --src_lng "English" \
+#     --tgt_lng "Luxembourgish" \
+#     --num_train_epochs 1 \
+#     --learning_rate 1e-6 \
+#     --project_root "/home/llama/Personal_Directories/srb/mt_luxembourgish" \
+#     --training_dataset_path "data/training_dataset/dataset_llama_split.jsonl" \
+#     --model_path "/home/snt/projects_lujun/base_models/Llama-3.2-1B-Instruct" \
+#     --is_train_response_only "True" \
+#     --is_peft "True" \
+#     --r 256 \
+#     --is_unsloth "True"
+
+
+
+#     --resume_from_checkpoint False\
+#     --resume_checkpoint_path "/home/snt/projects_lujun/mt_luxembourgish/logs/fit_1738867685.359803_0.001"
+
+
+# CUDA_VISIBLE_DEVICES=0 python SFT.py \
+#     --per_device_train_batch_size 8 \
+#     --per_device_eval_batch_size 8 \
+#     --src_lng "English" \
+#     --tgt_lng "Luxembourgish" \
+#     --num_train_epochs 1 \
+#     --learning_rate 1e-6 \
+#     --project_root "/home/snt/projects_lujun/mt_luxembourgish" \
+#     --training_dataset_path "data/training_dataset/dataset_llama_split.jsonl" \
+#     --model_path "/home/snt/projects_lujun/base_models/Llama-3.2-1B-Instruct" \
+#     --is_train_response_only "True"
+
+
+# CUDA_VISIBLE_DEVICES=0 python SFT.py \
+#     --per_device_train_batch_size 8 \
+#     --per_device_eval_batch_size 8 \
+#     --src_lng "English" \
+#     --tgt_lng "Luxembourgish" \
+#     --num_train_epochs 1 \
+#     --learning_rate 1e-6 \
+#     --project_root "/home/snt/projects_lujun/mt_luxembourgish" \
+#     --training_dataset_path "data/training_dataset/dataset_llama_split.jsonl" \
+#     --model_path "/home/snt/projects_lujun/base_models/Llama-3.2-1B-Instruct" \
+#     --is_train_response_only "True" \
+#     --is_peft "True" \
+#     --r 256 \
+#     --is_unsloth "True"
