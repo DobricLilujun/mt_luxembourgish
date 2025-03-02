@@ -63,6 +63,34 @@ def create_prompt(sample, src_lng, tgt_lng, is_prefix =True, is_suffix = True, e
     return { "full_prompt": full_prompt }
 
 
+def create_prompt_gemma(sample, src_lng, tgt_lng, is_prefix =True, is_suffix = True, eos_rep = 3, mode="train", tokenizer=None):
+
+    if tokenizer is None or tokenizer.eos_token is None:
+        raise ValueError("A tokenizer with a defined EOS token is required.")
+    
+    alpaca_prompt = """Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+
+### Instruction:
+{}
+
+### Input:
+{}
+
+### Response:
+{}"""
+
+    input_text = sample[src_lng.capitalize()].strip()  # Extract the input text.
+    response = ( sample[tgt_lng.capitalize()].strip() if tgt_lng.capitalize() in sample else "")  # Extract the target text.
+    instruction = "Translate the following English input text into Luxembourgish. Do not include any additional information or unrelated content."
+    # Get the EOS token from the tokenizer.
+    eos_token = tokenizer.eos_token
+    if mode == "train":
+        full_prompt = alpaca_prompt.format(instruction, input_text, response) + eos_token
+    else:
+        full_prompt = alpaca_prompt.format(instruction, input_text, "") + eos_token
+
+    return { "full_prompt": full_prompt }
+
 def print_trainable_parameters(model):
     """Prints the number of trainable parameters in the model."""
     trainable_params = 0

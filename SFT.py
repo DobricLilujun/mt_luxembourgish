@@ -11,6 +11,7 @@ from transformers import (
     TrainingArguments,
     EarlyStoppingCallback,
 )
+
 import time
 from torch.utils.tensorboard import SummaryWriter
 
@@ -31,10 +32,20 @@ import os
 from datasets import Dataset
 import argparse
 
-from utils.utils_train import pre_process, create_prompt, print_trainable_parameters
-from unsloth import is_bfloat16_supported
+from utils.utils_train import pre_process, create_prompt, print_trainable_parameters, create_prompt_gemma
 from transformers import TrainingArguments, DataCollatorForSeq2Seq
+
 from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
+import torch
+from peft import get_peft_model, LoraConfig
+from transformers import logging as transformers_logging
+from accelerate import Accelerator
+
+import warnings
+
+
+warnings.simplefilter("ignore")
+transformers_logging.set_verbosity_error()
 
 
 # ========================== CMD Argument Parser ==========================
@@ -92,6 +103,16 @@ is_peft = args.is_peft
 is_unsloth = args.is_unsloth
 is_train_response_only = args.is_train_response_only
 
+if is_unsloth:
+    from unsloth import is_bfloat16_supported
+    from unsloth.chat_templates import train_on_responses_only
+    from unsloth import FastLanguageModel
+    fp16 = not is_bfloat16_supported()
+    bf16 = is_bfloat16_supported(),
+else:
+    fp16 = False
+    bf16 = False
+
 ## Params need to be set
 # learning_rate = 1e-5 # Learning rate for the optimizer
 # per_device_train_batch_size = 10  # Batch size for training per device
@@ -111,14 +132,13 @@ is_train_response_only = args.is_train_response_only
 
 
 model_name = model_path.split("/")[-1]
-train_ratio = 0.005  # Number of samples to be used for training and evaluation
+train_ratio = 1.0  # Number of samples to be used for training and evaluation
 warmup_ratio = 0.5
 logging_steps = 1000
 evaluation_strategy="steps"
 save_strategy="epoch"
 eval_steps=1000
 max_grad_norm = 0.3
-fp16 = not is_bfloat16_supported()
 MAX_LEN = 512
 weight_decay = 0.01
 dtype = None # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
@@ -183,17 +203,32 @@ val_dataset = val_dataset.rename_columns({
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 tokenizer.pad_token = tokenizer.eos_token
 
-train_dataset = train_dataset.map(
-    lambda sample: {
-        "full_prompt": create_prompt(sample, src_lng=src_lng, tgt_lng=tgt_lng, mode="train", tokenizer=tokenizer)["full_prompt"]
-    }
-).select_columns(["full_prompt"])
+if "gemma" in model_path:
+    train_dataset = train_dataset.map(
+        lambda sample: {
+            "full_prompt": create_prompt_gemma(sample, src_lng=src_lng, tgt_lng=tgt_lng, mode="train", tokenizer=tokenizer)["full_prompt"]
+        }
+    ).select_columns(["full_prompt"])
 
-val_dataset = val_dataset.map(
-    lambda sample: {
-        "full_prompt": create_prompt(sample, src_lng=src_lng, tgt_lng=tgt_lng, mode="train", tokenizer=tokenizer)["full_prompt"]
-    }
-).select_columns(["full_prompt"])
+    val_dataset = val_dataset.map(
+        lambda sample: {
+            "full_prompt": create_prompt_gemma(sample, src_lng=src_lng, tgt_lng=tgt_lng, mode="train", tokenizer=tokenizer)["full_prompt"]
+        }
+    ).select_columns(["full_prompt"])
+else:
+    train_dataset = train_dataset.map(
+        lambda sample: {
+            "full_prompt": create_prompt(sample, src_lng=src_lng, tgt_lng=tgt_lng, mode="train", tokenizer=tokenizer)["full_prompt"]
+        }
+    ).select_columns(["full_prompt"])
+
+    val_dataset = val_dataset.map(
+        lambda sample: {
+            "full_prompt": create_prompt(sample, src_lng=src_lng, tgt_lng=tgt_lng, mode="train", tokenizer=tokenizer)["full_prompt"]
+        }
+    ).select_columns(["full_prompt"])
+
+print (train_dataset["full_prompt"][0])
 
 def tokenize_function(examples):
     return tokenizer(
@@ -208,9 +243,6 @@ tokenized_train_dataset = train_dataset.map(tokenize_function, batched=True, rem
 tokenized_val_dataset = val_dataset.map(tokenize_function, batched=True, remove_columns=["full_prompt"])
 
 
-from unsloth import FastLanguageModel
-import torch
-from peft import get_peft_model, LoraConfig
 
 
 # Using Unsloth Acceleration 
@@ -255,8 +287,6 @@ else:
         )
         model = get_peft_model(model, lora_config)
 
-data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
-
 print (model)
 print(print_trainable_parameters(model))
 
@@ -266,13 +296,6 @@ for name, param in model.named_parameters():
     else:
         print(f"Layer: {name}, Shape: {param.shape}, Non-trainable parameters: {param.numel()}")
 
-
-from transformers import logging as transformers_logging
-from accelerate import Accelerator
-from unsloth.chat_templates import train_on_responses_only
-import warnings
-warnings.simplefilter("ignore")
-transformers_logging.set_verbosity_error()
 
 def train_ddp_accelerate_sft():
     training_args = SFTConfig(
@@ -287,8 +310,8 @@ def train_ddp_accelerate_sft():
         eval_steps=eval_steps,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
-        fp16= fp16,
-        bf16 = is_bfloat16_supported(),
+        fp16 = fp16,
+        bf16 =bf16,
         max_grad_norm=max_grad_norm,
         group_by_length=True,
         lr_scheduler_type="cosine",
@@ -298,28 +321,31 @@ def train_ddp_accelerate_sft():
         seed = train_seed,
         ddp_find_unused_parameters=False, # Avoids warnings
         dataloader_num_workers=4,  # Adjust number of workers based on hardware
+        dataset_text_field = "full_prompt",
+        max_seq_length = MAX_LEN,
+        dataset_num_proc = 2,
+        packing = False, # Can make training 5x faster for short sequences.
         # load_best_model_at_end=True,
     )
 
     trainer = SFTTrainer(
         model = model,
-        tokenizer=tokenizer,
         train_dataset = tokenized_train_dataset,
         eval_dataset = tokenized_val_dataset,
-        dataset_text_field = "full_prompt",
-        max_seq_length = MAX_LEN,
-        data_collator = data_collator,
-        dataset_num_proc = 2,
-        packing = False, # Can make training 5x faster for short sequences.
+        # data_collator = data_collator,
         args = training_args,
     )
 
+
     if is_train_response_only:
-        trainer = train_on_responses_only(
-            trainer,
-            instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
-            response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",
-        )
+        if "gemma" not in model_path and is_unsloth:
+            trainer = train_on_responses_only(
+                trainer,
+                instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
+                response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",
+            )
+            
+
     trainer_stats = trainer.train(resume_from_checkpoint=resume_from_checkpoint)
     print("Finished training SFT.")
     return trainer_stats
@@ -359,17 +385,28 @@ print(f"Peak reserved memory for training % of max memory = {lora_percentage} %.
 
 
 # CUDA_VISIBLE_DEVICES=0 python SFT.py \
-#     --per_device_train_batch_size 8 \
-#     --per_device_eval_batch_size 8 \
+#     --per_device_train_batch_size 1 \
+#     --per_device_eval_batch_size 1 \
 #     --src_lng "English" \
 #     --tgt_lng "Luxembourgish" \
 #     --num_train_epochs 1 \
 #     --learning_rate 1e-6 \
-#     --project_root "/home/llama/Personal_Directories/srb/mt_luxembourgish" \
+#     --project_root "/home/snt/projects_lujun/mt_luxembourgish" \
+#     --training_dataset_path "data/training_dataset/dataset_llama_split.jsonl" \
+#     --model_path "/home/snt/projects_lujun/base_models/gemma-2-2b-it" \
+#     --is_train_response_only "True"
+
+# CUDA_VISIBLE_DEVICES=0 python SFT.py \
+#     --per_device_train_batch_size 1 \
+#     --per_device_eval_batch_size 1 \
+#     --src_lng "English" \
+#     --tgt_lng "Luxembourgish" \
+#     --num_train_epochs 1 \
+#     --learning_rate 1e-6 \
+#     --project_root "/home/snt/projects_lujun/mt_luxembourgish" \
 #     --training_dataset_path "data/training_dataset/dataset_llama_split.jsonl" \
 #     --model_path "/home/snt/projects_lujun/base_models/Llama-3.2-1B-Instruct" \
 #     --is_train_response_only "True"
-
 
 
 # CUDA_VISIBLE_DEVICES=0 python SFT.py \
@@ -404,6 +441,8 @@ print(f"Peak reserved memory for training % of max memory = {lora_percentage} %.
 #     --training_dataset_path "data/training_dataset/dataset_llama_split.jsonl" \
 #     --model_path "/home/snt/projects_lujun/base_models/Llama-3.2-1B-Instruct" \
 #     --is_train_response_only "True"
+
+
 
 
 # CUDA_VISIBLE_DEVICES=0 python SFT.py \
